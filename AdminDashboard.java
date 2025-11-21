@@ -98,6 +98,16 @@ public class AdminDashboard extends JFrame {
         reportsPanel = new ReportsPanel();
         employeesPanel = new EmployeePanel();
 
+        JPanel dashboardScrollContent = createDashboardUI();
+
+        JScrollPane dashboardScrollPane = new JScrollPane(dashboardScrollContent);
+
+        dashboardScrollPane.setBorder(BorderFactory.createEmptyBorder()); // Remove default border
+        dashboardScrollPane.getVerticalScrollBar().setUnitIncrement(20); // Make the scroll bar 'faster'
+
+// 3. Add the scrollable panel to the card layout
+        mainPanel.add(dashboardScrollPane, "dashboard");
+
         mainPanel.add(createDashboardUI(), "dashboard");
         mainPanel.add(reportsPanel, "reports");
         mainPanel.add(inventoryPanel, "inventory");
@@ -160,34 +170,292 @@ public class AdminDashboard extends JFrame {
     }
 
     private JPanel createDashboardUI() {
-        JPanel panel = new JPanel(new BorderLayout());
+        JPanel panel = new JPanel();
         panel.setBackground(new Color(242, 245, 249));
+        // Use BoxLayout for vertical stacking: Cards on top, detailed sections below
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS)); 
         panel.setBorder(new EmptyBorder(20, 20, 20, 20));
 
-        // Cards layout
-        JPanel cardsPanel = new JPanel(new GridLayout(1, 4, 20, 0));
+        panel.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        // 1. Cards Panel (Now 4 key metrics in the requested order)
+        // CHANGE: 1 row, 4 columns
+        JPanel cardsPanel = new JPanel(new GridLayout(1, 4, 20, 20));
         cardsPanel.setOpaque(false);
+        
+        // --- Core Metrics in New Order ---
+        
+        // 1. Placeholder for "Top Selling Products" (using Total Active Products instead)
+        cardsPanel.add(createDashboardCard("Total Sales (Today)", "₱85,300", new Color(3, 169, 244)));
+        
+        // 2. Low Stock
+        cardsPanel.add(createDashboardCard("Low Stock", "42", new Color(255, 111, 0))); // Orange
+        
+        // 3. Out of Stock Items
+        cardsPanel.add(createDashboardCard("Out of Stock Items", "5", new Color(244, 67, 54))); // Red
+        
+        // 4. Employees
+        cardsPanel.add(createDashboardCard("Employees", "12", new Color(102, 187, 106))); // Green
+        
+        // --- Cards Removed: Total Sales (Today) and Open Orders ---
 
-        cardsPanel.add(createDashboardCard("Total Items", "1,240", new Color(33, 150, 243)));
-        cardsPanel.add(createDashboardCard("Low Stock", "42", new Color(255, 111, 0)));
-        cardsPanel.add(createDashboardCard("Employees", "12", new Color(102, 187, 106)));
-        cardsPanel.add(createDashboardCard("Categories", "18", new Color(171, 71, 188)));
+        // Wrap cardsPanel to align it horizontally and give it a max height
+        JPanel cardsWrapper = new JPanel(new BorderLayout());
+        cardsWrapper.setOpaque(false);
+        cardsWrapper.add(cardsPanel, BorderLayout.NORTH);
+        
+        panel.add(cardsWrapper);
+        panel.add(Box.createRigidArea(new Dimension(0, 25))); // Vertical spacing
+        
+        // 2. Detailed Content Section (Lists and Alerts) - Remains the same
+        panel.add(createLowerContentSection());
+        
+        return panel;
+    }
+    // ... (All other methods remain the same) ...
 
-        panel.add(cardsPanel, BorderLayout.NORTH);
+    private JPanel createLowerContentSection() {
+        JPanel lowerPanel = new JPanel();
+        lowerPanel.setOpaque(false);
+        lowerPanel.setLayout(new BoxLayout(lowerPanel, BoxLayout.Y_AXIS));
+
+        // 1. Top Selling Products (Full Width)
+        lowerPanel.add(createTopSellingPanel());
+        lowerPanel.add(Box.createRigidArea(new Dimension(0, 20))); // Vertical spacing
+
+        // 2. Recent Activity & Stock Alerts (Side-by-Side)
+        JPanel splitPanel = new JPanel(new GridLayout(1, 2, 20, 0)); // 1 row, 2 columns, 20px horizontal gap
+        splitPanel.setOpaque(false);
+        
+        splitPanel.add(createRecentActivityPanel());
+        splitPanel.add(createStockAlertsPanel());
+        
+        lowerPanel.add(splitPanel);
+
+        return lowerPanel;
+    }
+
+    private JPanel createTopSellingPanel() {
+        RoundedPanel panel = new RoundedPanel(new BorderLayout(), 15); 
+        panel.setBackground(Color.WHITE);
+        
+        // Remove the old LineBorder since RoundedPanel draws a new one
+        panel.setBorder(new EmptyBorder(15, 15, 15, 15));;
+        
+        JLabel title = new JLabel("Top Selling Woodwork Items 📈");
+        title.setFont(new Font("Segoe UI Semibold", Font.BOLD, 18));
+        panel.add(title, BorderLayout.NORTH);
+
+        // This list will contain our modern styled product rows
+        JPanel list = new JPanel();
+        list.setLayout(new BoxLayout(list, BoxLayout.Y_AXIS));
+        list.setOpaque(false);
+        list.setBorder(new EmptyBorder(10, 0, 0, 0));
+        
+        // --- Populating with Items and Simulated Sales ---
+        // Note: Sold count and stock status are based on your provided list/simulated.
+        
+        list.add(createProductItem("S4S Pine 1x2 (6ft)", "950 sold", 1000, 1)); // Highest stock = most popular?
+        list.add(createSeparator());
+        list.add(createProductItem("Plywood 1/4", "75 sold", 20, 2));
+        list.add(createSeparator());
+        list.add(createProductItem("Marine Plywood", "55 sold", 5, 3)); // Critical stock item
+        list.add(createSeparator());
+        list.add(createProductItem("Yakal 2x4 (10ft)", "45 sold", 100, 4));
+        list.add(createSeparator());
+        list.add(createProductItem("Gmelina 2x3 (8ft)", "38 sold", 40, 5));
+
+
+        panel.add(list, BorderLayout.CENTER);
         return panel;
     }
 
+    private JPanel createProductItem(String name, String sold, int stock, int rank) {
+        JPanel item = new JPanel(new BorderLayout(15, 0));
+        item.setOpaque(false);
+        item.setBorder(new EmptyBorder(10, 0, 10, 0));
+
+        // --- LEFT SIDE: Name, Sold, and Stock Badge ---
+        
+        // Stock Badge (Pill Style)
+        Color stockColor = new Color(76, 175, 80); // Default: Green
+        String stockText = "In Stock";
+        if (stock <= 20 && stock > 5) {
+            stockColor = new Color(255, 152, 0); // Warning: Orange
+            stockText = "Low Stock";
+        } else if (stock <= 5) {
+            stockColor = new Color(244, 67, 54); // Critical: Red
+            stockText = "CRITICAL STOCK";
+        }
+
+        JLabel lblStockBadge = new JLabel(" " + stockText + " ");
+        lblStockBadge.setFont(new Font("Segoe UI Semibold", Font.PLAIN, 10));
+        lblStockBadge.setForeground(Color.WHITE);
+        lblStockBadge.setBackground(stockColor);
+        lblStockBadge.setOpaque(true);
+        lblStockBadge.setBorder(BorderFactory.createEmptyBorder(2, 5, 2, 5));
+        // Note: For true rounded corners, you'd need a custom border/drawing logic.
+
+        // Details Panel (Sold count and Stock Badge)
+        JLabel lblSold = new JLabel(sold + " | " + stock + " in stock");
+        lblSold.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        lblSold.setForeground(new Color(120, 120, 120));
+        
+        JPanel detailsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        detailsPanel.setOpaque(false);
+        detailsPanel.add(lblSold);
+        detailsPanel.add(lblStockBadge);
+
+
+        // Main Product Text
+        JLabel lblName = new JLabel(name);
+        lblName.setFont(new Font("Segoe UI Semibold", Font.BOLD, 15));
+        
+        JPanel left = new JPanel(new BorderLayout());
+        left.setOpaque(false);
+        left.add(lblName, BorderLayout.NORTH);
+        left.add(detailsPanel, BorderLayout.CENTER);
+        item.add(left, BorderLayout.CENTER);
+        
+        // --- RIGHT SIDE: Rank Badge ---
+        
+        JLabel lblRank = new JLabel(" #" + rank + " ");
+        lblRank.setFont(new Font("Segoe UI Semibold", Font.BOLD, 14));
+        lblRank.setForeground(Color.WHITE);
+        lblRank.setBackground(new Color(158, 158, 158)); // Dark Gray Background
+        lblRank.setOpaque(true);
+        lblRank.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10)); // Padding for a "badge" look
+        
+        item.add(lblRank, BorderLayout.EAST);
+        
+        return item;
+    }
+    
+    private JSeparator createSeparator() {
+        JSeparator sep = new JSeparator(SwingConstants.HORIZONTAL);
+        sep.setForeground(new Color(240, 240, 240));
+        return sep;
+    }
+
+    private JPanel createRecentActivityPanel() {
+        RoundedPanel panel = new RoundedPanel(new BorderLayout(), 15); 
+        panel.setBackground(Color.WHITE);
+        panel.setBorder(new EmptyBorder(15, 15, 15, 15));
+          
+        JLabel title = new JLabel("Recent Activity 🕒");
+        title.setFont(new Font("Segoe UI Semibold", Font.BOLD, 18));
+        panel.add(title, BorderLayout.NORTH);
+
+        JPanel activityList = new JPanel();
+        activityList.setLayout(new BoxLayout(activityList, BoxLayout.Y_AXIS));
+        activityList.setOpaque(false);
+        activityList.setBorder(new EmptyBorder(10, 0, 0, 0));
+        
+        // Activity items (using HTML for color/icon)
+        activityList.add(createActivityItem("<html><span style='color:green;'>• New Order </span>#1005 processed</html>", "5 min ago"));
+        activityList.add(Box.createRigidArea(new Dimension(0, 10)));
+        activityList.add(createActivityItem("<html><span style='color:blue;'>• Inventory Update:</span> Pine 2x4s added</html>", "12 min ago"));
+        activityList.add(Box.createRigidArea(new Dimension(0, 10)));
+        activityList.add(createActivityItem("<html><span style='color:red;'>• Employee Login:</span> J. Dela Cruz</html>", "25 min ago"));
+        activityList.add(Box.createRigidArea(new Dimension(0, 10)));
+        activityList.add(createActivityItem("<html><span style='color:orange;'>• Report Generated:</span> End of Day Sales</html>", "1 hour ago"));
+        
+        panel.add(activityList, BorderLayout.CENTER);
+        return panel;
+    }
+    
+    private JPanel createActivityItem(String activity, String time) {
+        JPanel item = new JPanel(new BorderLayout());
+        item.setOpaque(false);
+        
+        JLabel lblActivity = new JLabel(activity);
+        lblActivity.setFont(new Font("Segoe UI", Font.PLAIN, 14));
+        
+        JLabel lblTime = new JLabel(time);
+        lblTime.setFont(new Font("Segoe UI", Font.ITALIC, 12));
+        lblTime.setForeground(Color.GRAY);
+        lblTime.setHorizontalAlignment(SwingConstants.RIGHT);
+
+        item.add(lblActivity, BorderLayout.WEST);
+        item.add(lblTime, BorderLayout.EAST);
+        return item;
+    }
+
+    private JPanel createStockAlertsPanel() {
+        RoundedPanel panel = new RoundedPanel(new BorderLayout(), 15); 
+        panel.setBackground(Color.WHITE);
+        panel.setBorder(new EmptyBorder(15, 15, 15, 15));
+
+        // Use a FlowLayout or GridBagLayout for the title to place the icon
+        JPanel titlePanel = new JPanel(new BorderLayout());
+        titlePanel.setOpaque(false);
+        JLabel title = new JLabel("Stock Alerts ⚠️");
+        title.setFont(new Font("Segoe UI Semibold", Font.BOLD, 18));
+        titlePanel.add(title, BorderLayout.WEST);
+        panel.add(titlePanel, BorderLayout.NORTH);
+
+        JPanel alertsContent = new JPanel();
+        alertsContent.setLayout(new BoxLayout(alertsContent, BoxLayout.Y_AXIS));
+        alertsContent.setOpaque(false);
+        alertsContent.setBorder(new EmptyBorder(10, 0, 0, 0));
+
+        // Low Stock Alert Card
+        JPanel lowStockCard = createAlertCard("Low Stock Items", "Need restocking soon", "42", new Color(255, 152, 0));
+        
+        // Total Products Card
+        JPanel totalProductsCard = createAlertCard("Total Products", "Active in inventory", "1,240", new Color(76, 175, 80));
+        
+        alertsContent.add(lowStockCard);
+        alertsContent.add(Box.createRigidArea(new Dimension(0, 10)));
+        alertsContent.add(totalProductsCard);
+        
+        panel.add(alertsContent, BorderLayout.CENTER);
+        return panel;
+    }
+    
+    private JPanel createAlertCard(String title, String subtitle, String value, Color color) {
+        JPanel card = new JPanel(new BorderLayout());
+        card.setBackground(new Color(250, 250, 250)); // Slightly off-white for contrast
+        card.setBorder(BorderFactory.createCompoundBorder(
+            new LineBorder(new Color(240, 240, 240), 1, true),
+            new EmptyBorder(10, 15, 10, 15)
+        ));
+        
+        JLabel lblTitle = new JLabel(title);
+        lblTitle.setFont(new Font("Segoe UI Semibold", Font.BOLD, 15));
+        lblTitle.setForeground(new Color(50, 50, 50));
+        
+        JLabel lblSubtitle = new JLabel(subtitle);
+        lblSubtitle.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        lblSubtitle.setForeground(Color.GRAY);
+        
+        JPanel textPanel = new JPanel(new BorderLayout());
+        textPanel.setOpaque(false);
+        textPanel.add(lblTitle, BorderLayout.NORTH);
+        textPanel.add(lblSubtitle, BorderLayout.SOUTH);
+        
+        JLabel lblValue = new JLabel(value);
+        lblValue.setFont(new Font("Segoe UI Semibold", Font.BOLD, 28));
+        lblValue.setForeground(color);
+        
+        card.add(textPanel, BorderLayout.CENTER);
+        card.add(lblValue, BorderLayout.EAST);
+        
+        return card;
+    }
+
     // ===== Dashboard Card =====
+    // ===== Dashboard Card - UPDATED TO USE RoundedPanel =====
     private JPanel createDashboardCard(String title, String value, Color color) {
-        JPanel card = new JPanel();
+        // CHANGE: Use RoundedPanel(Layout, Radius)
+        RoundedPanel card = new RoundedPanel(new BorderLayout(), 15);
+        
         card.setPreferredSize(new Dimension(200, 130));
         card.setBackground(Color.WHITE);
-        card.setBorder(new CompoundBorder(
-                new LineBorder(new Color(220, 220, 220), 1, true),
-                new EmptyBorder(20, 20, 20, 20)
-        ));
-        card.setLayout(new BorderLayout());
-
+        
+        // Remove old borders since RoundedPanel draws its own and we added padding in the class
+        // card.setBorder(new CompoundBorder(...)); 
+        
         JLabel lblTitle = new JLabel(title);
         lblTitle.setFont(new Font("Segoe UI", Font.PLAIN, 16));
         lblTitle.setForeground(new Color(90, 90, 90));
